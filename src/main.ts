@@ -8,19 +8,17 @@ const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-  backgroundColor: '#1e2340',
+  backgroundColor: '#0f1225',
   parent: 'game-container',
   scene: [BootScene, GameScene, UIScene],
   scale: {
-    mode: Phaser.Scale.ENVELOP,
+    mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    expandParent: true,
-    width: GAME_WIDTH,
-    height: GAME_HEIGHT,
+    expandParent: false,
   },
   input: {
     touch: true,
-    activePointers: 2,
+    activePointers: 3,
   },
   render: {
     antialias: true,

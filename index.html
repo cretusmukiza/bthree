@@ -17,31 +17,32 @@
         background: #0f1225;
         overflow: hidden;
         font-family: monospace;
-        touch-action: none;
+        touch-action: manipulation;
         -webkit-touch-callout: none;
         -webkit-user-select: none;
         user-select: none;
         -webkit-tap-highlight-color: transparent;
+        overscroll-behavior: none;
       }
 
       body {
         display: flex;
         align-items: center;
         justify-content: center;
+        position: fixed;
+        inset: 0;
       }
 
       #game-container {
-        position: fixed;
-        inset: 0;
         width: 100%;
         height: 100%;
+        position: relative;
       }
 
+      /* Let Phaser control the canvas — do NOT override width/height */
       #game-container canvas {
         display: block;
-        width: 100% !important;
-        height: 100% !important;
-        object-fit: cover;
+        touch-action: none;
       }
 
       /* Loading splash */
@@ -72,6 +73,7 @@
 
     <script type="module" src="/src/main.ts"></script>
     <script>
+      // Hide loading splash once Phaser canvas appears
       const observer = new MutationObserver(() => {
         const canvas = document.querySelector('#game-container canvas');
         if (canvas) {
@@ -80,6 +82,10 @@
         }
       });
       observer.observe(document.getElementById('game-container'), { childList: true });
+
+      // Prevent iOS Safari bounce/zoom
+      document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
     </script>
   </body>
 </html>

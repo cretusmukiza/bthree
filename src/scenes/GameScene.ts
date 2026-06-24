@@ -60,8 +60,9 @@ export class GameScene extends Phaser.Scene {
   // ─── Camera ──────────────────────────────────────────────────────────────────
 
   private setupCamera(): void {
+    this.cameras.main.scrollX = 0;
     this.cameras.main.startFollow(this.chicken, true, 0.08, 0);
-    this.cameras.main.setFollowOffset(-GAME_WIDTH * 0.2, 0);
+    this.cameras.main.setFollowOffset(-GAME_WIDTH * 0.35, 0);
   }
 
   // ─── Road visuals ─────────────────────────────────────────────────────────────
@@ -260,7 +261,7 @@ export class GameScene extends Phaser.Scene {
   // ─── Input ───────────────────────────────────────────────────────────────────
 
   private setupInput(): void {
-    this.input.on('pointerdown', () => this.handleHopInput());
+    // Touch/click is handled by UIScene to avoid stealing taps from buttons
     this.input.keyboard?.on('keydown-SPACE', () => this.handleHopInput());
     this.input.keyboard?.on('keydown-RIGHT', () => this.handleHopInput());
   }

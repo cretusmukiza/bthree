@@ -5,8 +5,6 @@ import { DIFFICULTIES, DIFFICULTY_ORDER, DifficultyKey } from '../config/difficu
 import { GameScene } from './GameScene';
 
 const FONT = { fontFamily: 'monospace', color: '#ffffff' };
-const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-const S = IS_TOUCH ? 1.2 : 1;
 
 export class UIScene extends Phaser.Scene {
   private gameScene!: GameScene;
@@ -22,7 +20,6 @@ export class UIScene extends Phaser.Scene {
 
   private idlePanel!: Phaser.GameObjects.Container;
   private activeBar!: Phaser.GameObjects.Container;
-  private topBar!: Phaser.GameObjects.Container;
 
   private anzaBtn!: Phaser.GameObjects.Container;
   private toaBtn!: Phaser.GameObjects.Container;
@@ -30,6 +27,9 @@ export class UIScene extends Phaser.Scene {
   private stakePlusBtn!: Phaser.GameObjects.Container;
   private topupBtn!: Phaser.GameObjects.Container;
   private diffBtns: Map<DifficultyKey, Phaser.GameObjects.Container> = new Map();
+
+  // Full-screen tap zone for hopping during active gameplay
+  private hopZone!: Phaser.GameObjects.Zone;
 
   constructor() {
     super({ key: 'UIScene' });
@@ -40,36 +40,47 @@ export class UIScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.buildHopZone();
     this.buildTopBar();
     this.buildMultiplierDisplay();
     this.buildIdlePanel();
     this.buildActiveBar();
     this.buildResultBanner();
-    this.setupSwipe();
 
     this.ready = true;
     this.onStateUpdate(this.gameScene.state);
   }
 
-  // ─── Swipe-right to hop (mobile) ──────────────────────────────────────────
+  // ─── Hop zone: full-screen tap/swipe area for gameplay ────────────────────
 
-  private setupSwipe(): void {
+  private buildHopZone(): void {
+    this.hopZone = this.add.zone(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT);
+    this.hopZone.setInteractive();
+    this.hopZone.setDepth(-1);
+
     let startX = 0;
     let startY = 0;
-    let swiping = false;
+    let startTime = 0;
 
-    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+    this.hopZone.on('pointerdown', (p: Phaser.Input.Pointer) => {
       startX = p.x;
       startY = p.y;
-      swiping = true;
+      startTime = p.time;
     });
 
-    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if (!swiping) return;
-      swiping = false;
+    this.hopZone.on('pointerup', (p: Phaser.Input.Pointer) => {
       const dx = p.x - startX;
       const dy = Math.abs(p.y - startY);
-      if (dx > 40 && dy < dx * 0.7) {
+      const dt = p.time - startTime;
+
+      // Swipe right → hop
+      if (dx > 30 && dy < dx * 0.8) {
+        this.gameScene.handleHopInput();
+        return;
+      }
+
+      // Quick tap (< 300ms, didn't drag much) → hop
+      if (dt < 300 && Math.abs(dx) < 20 && dy < 20) {
         this.gameScene.handleHopInput();
       }
     });
@@ -78,37 +89,33 @@ export class UIScene extends Phaser.Scene {
   // ─── Top bar ──────────────────────────────────────────────────────────────
 
   private buildTopBar(): void {
-    this.topBar = this.add.container(0, 0);
-    const barH = Math.round(40 * S);
-
+    const barH = 40;
     const bg = this.add.graphics();
-    bg.fillStyle(0x0f1225, 0.85);
+    bg.fillStyle(0x0f1225, 0.88);
     bg.fillRoundedRect(4, 4, GAME_WIDTH - 8, barH, 8);
 
-    this.balanceText = this.add.text(14, 10, 'Pesa: 1,000', {
-      ...FONT, fontSize: `${Math.round(14 * S)}px`,
+    this.balanceText = this.add.text(14, 12, 'Pesa: 1,000', {
+      ...FONT, fontSize: '14px',
     });
 
-    this.laneText = this.add.text(GAME_WIDTH / 2, 10, 'Njia: 0', {
-      ...FONT, fontSize: `${Math.round(14 * S)}px`,
+    this.laneText = this.add.text(GAME_WIDTH / 2, 12, 'Njia: 0', {
+      ...FONT, fontSize: '14px',
     }).setOrigin(0.5, 0);
 
-    this.topupBtn = this.makeButton(GAME_WIDTH - 52, barH / 2 + 4, '+ Pesa', 0x065f46, () => {
+    this.topupBtn = this.makeButton(GAME_WIDTH - 50, 24, '+ Pesa', 0x065f46, () => {
       this.gameScene.topUp();
-    }, Math.round(68 * S), Math.round(26 * S));
-
-    this.topBar.add([bg, this.balanceText, this.laneText, this.topupBtn]);
+    }, 68, 28);
   }
 
   // ─── Multiplier ───────────────────────────────────────────────────────────
 
   private buildMultiplierDisplay(): void {
-    this.multiplierText = this.add.text(GAME_WIDTH / 2, Math.round(56 * S), '1.00×', {
-      ...FONT, fontSize: `${Math.round(28 * S)}px`, fontStyle: 'bold',
+    this.multiplierText = this.add.text(GAME_WIDTH / 2, 62, '1.00×', {
+      ...FONT, fontSize: '30px', fontStyle: 'bold',
     }).setOrigin(0.5, 0.5).setAlpha(0.9);
 
-    this.payoutText = this.add.text(GAME_WIDTH / 2, Math.round(80 * S), '', {
-      ...FONT, fontSize: `${Math.round(12 * S)}px`, color: '#86efac',
+    this.payoutText = this.add.text(GAME_WIDTH / 2, 86, '', {
+      ...FONT, fontSize: '12px', color: '#86efac',
     }).setOrigin(0.5, 0.5);
   }
 
@@ -116,47 +123,42 @@ export class UIScene extends Phaser.Scene {
 
   private buildIdlePanel(): void {
     this.idlePanel = this.add.container(0, 0);
-    const panelH = Math.round(140 * S);
+    const panelH = 150;
     const panelY = GAME_HEIGHT - panelH;
 
     const bg = this.add.graphics();
     bg.fillStyle(0x0f1225, 0.95);
-    bg.fillRoundedRect(10, panelY, GAME_WIDTH - 20, panelH - 6, { tl: 14, tr: 14, bl: 14, br: 14 });
+    bg.fillRoundedRect(8, panelY, GAME_WIDTH - 16, panelH - 4, { tl: 14, tr: 14, bl: 14, br: 14 });
     this.idlePanel.add(bg);
 
     // Stake row
-    const stakeY = panelY + Math.round(14 * S);
-    const stakeLabel = this.add.text(20, stakeY + 2, 'Dau:', {
-      ...FONT, fontSize: `${Math.round(14 * S)}px`,
-    });
+    const stakeY = panelY + 14;
+    const stakeLabel = this.add.text(20, stakeY + 4, 'Dau:', { ...FONT, fontSize: '14px' });
 
-    const btnH = Math.round(32 * S);
-    const btnW = Math.round(44 * S);
-
-    this.stakeMinusBtn = this.makeButton(110, stakeY + btnH / 2, '−', 0x374151, () => {
+    this.stakeMinusBtn = this.makeButton(120, stakeY + 14, '−', 0x374151, () => {
       this.gameScene.setStake(this.gameScene.state.stake - 10);
-    }, btnW, btnH);
+    }, 50, 32);
 
     this.stakeText = this.add.text(GAME_WIDTH / 2, stakeY, '10', {
-      ...FONT, fontSize: `${Math.round(18 * S)}px`, fontStyle: 'bold',
+      ...FONT, fontSize: '20px', fontStyle: 'bold',
     }).setOrigin(0.5, 0);
 
-    this.stakePlusBtn = this.makeButton(GAME_WIDTH - 110, stakeY + btnH / 2, '+', 0x374151, () => {
+    this.stakePlusBtn = this.makeButton(GAME_WIDTH - 120, stakeY + 14, '+', 0x374151, () => {
       this.gameScene.setStake(this.gameScene.state.stake + 10);
-    }, btnW, btnH);
+    }, 50, 32);
 
     this.idlePanel.add([stakeLabel, this.stakeMinusBtn, this.stakeText, this.stakePlusBtn]);
 
     // Difficulty row
-    const diffY = panelY + Math.round(50 * S);
-    const diffBtnW = Math.round(82 * S);
-    const diffBtnH = Math.round(30 * S);
-    const totalW = DIFFICULTY_ORDER.length * diffBtnW + (DIFFICULTY_ORDER.length - 1) * 6;
+    const diffY = panelY + 54;
+    const diffBtnW = 90;
+    const diffBtnH = 32;
+    const totalW = DIFFICULTY_ORDER.length * diffBtnW + (DIFFICULTY_ORDER.length - 1) * 8;
     const startX = (GAME_WIDTH - totalW) / 2;
 
     DIFFICULTY_ORDER.forEach((key, i) => {
       const cfg = DIFFICULTIES[key];
-      const bx = startX + i * (diffBtnW + 6) + diffBtnW / 2;
+      const bx = startX + i * (diffBtnW + 8) + diffBtnW / 2;
       const btn = this.makeButton(bx, diffY + diffBtnH / 2, cfg.label, cfg.color, () => {
         this.gameScene.setDifficulty(key);
       }, diffBtnW, diffBtnH);
@@ -164,13 +166,11 @@ export class UIScene extends Phaser.Scene {
       this.idlePanel.add(btn);
     });
 
-    // ANZA button
-    const anzaY = panelY + Math.round(96 * S);
-    const anzaW = Math.round(220 * S);
-    const anzaH = Math.round(42 * S);
-    this.anzaBtn = this.makeButton(GAME_WIDTH / 2, anzaY, 'ANZA', 0x16a34a, () => {
+    // ANZA button — large tap target
+    const btnY = panelY + 108;
+    this.anzaBtn = this.makeButton(GAME_WIDTH / 2, btnY, 'ANZA', 0x16a34a, () => {
       this.gameScene.handleHopInput();
-    }, anzaW, anzaH);
+    }, 240, 44);
     this.idlePanel.add(this.anzaBtn);
   }
 
@@ -180,18 +180,18 @@ export class UIScene extends Phaser.Scene {
     this.activeBar = this.add.container(0, 0);
     this.activeBar.setVisible(false);
 
-    const barH = Math.round(50 * S);
-    const barW = Math.round(200 * S);
-    const barY = GAME_HEIGHT - barH - 6;
+    const barH = 52;
+    const barW = 220;
+    const barY = GAME_HEIGHT - barH - 8;
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x0f1225, 0.8);
+    bg.fillStyle(0x0f1225, 0.85);
     bg.fillRoundedRect(GAME_WIDTH / 2 - barW / 2, barY, barW, barH, 12);
     this.activeBar.add(bg);
 
     this.toaBtn = this.makeButton(GAME_WIDTH / 2, barY + barH / 2, 'TOA  💰', 0xb45309, () => {
       this.gameScene.handleToa();
-    }, Math.round(180 * S), Math.round(40 * S));
+    }, 200, 42);
     this.activeBar.add(this.toaBtn);
   }
 
@@ -204,9 +204,8 @@ export class UIScene extends Phaser.Scene {
     this.resultBanner = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20);
     this.resultBanner.setVisible(false);
 
-    const bw = Math.round(380 * S);
-    const bh = Math.round(160 * S);
-
+    const bw = 400;
+    const bh = 170;
     const bg = this.add.graphics();
     bg.fillStyle(0x0f1225, 0.97);
     bg.fillRoundedRect(-bw / 2, -bh / 2 + 10, bw, bh, 18);
@@ -214,21 +213,21 @@ export class UIScene extends Phaser.Scene {
     bg.strokeRoundedRect(-bw / 2, -bh / 2 + 10, bw, bh, 18);
 
     this.resultText = this.add.text(0, -20, '', {
-      ...FONT, fontSize: `${Math.round(28 * S)}px`, fontStyle: 'bold',
+      ...FONT, fontSize: '30px', fontStyle: 'bold',
     }).setOrigin(0.5, 0.5);
 
-    this.resultSubText = this.add.text(0, Math.round(14 * S), '', {
-      ...FONT, fontSize: `${Math.round(14 * S)}px`,
+    this.resultSubText = this.add.text(0, 16, '', {
+      ...FONT, fontSize: '14px',
     }).setOrigin(0.5, 0.5);
 
-    const cbw = Math.round(140 * S);
-    const cbh = Math.round(38 * S);
+    const cbw = 160;
+    const cbh = 42;
     const continueBtn = this.add.graphics();
     continueBtn.fillStyle(0x3b82f6, 1);
-    continueBtn.fillRoundedRect(-cbw / 2, Math.round(40 * S), cbw, cbh, 8);
+    continueBtn.fillRoundedRect(-cbw / 2, 44, cbw, cbh, 10);
 
-    this.continueText = this.add.text(0, Math.round(40 * S) + cbh / 2, 'ENDELEA', {
-      fontFamily: 'monospace', fontSize: `${Math.round(14 * S)}px`, fontStyle: 'bold', color: '#ffffff',
+    this.continueText = this.add.text(0, 44 + cbh / 2, 'ENDELEA', {
+      fontFamily: 'monospace', fontSize: '15px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5, 0.5);
 
     this.resultBanner.add([bg, this.resultText, this.resultSubText, continueBtn, this.continueText]);
@@ -266,8 +265,16 @@ export class UIScene extends Phaser.Scene {
       this.payoutText.setVisible(false);
     }
 
+    // Panels
     this.idlePanel.setVisible(isIdle);
     this.activeBar.setVisible(isPlaying);
+
+    // Hop zone only active during gameplay
+    if (isPlaying) {
+      this.hopZone.setInteractive();
+    } else {
+      this.hopZone.disableInteractive();
+    }
 
     this.setAlpha(this.toaBtn, (isPlaying && state.multiplier > 1) ? 1 : 0.25);
 
@@ -275,8 +282,8 @@ export class UIScene extends Phaser.Scene {
     this.setAlpha(this.stakeMinusBtn, isIdle ? 1 : 0.3);
     this.setAlpha(this.stakePlusBtn, isIdle ? 1 : 0.3);
 
-    const diffHw = Math.round(41 * S);
-    const diffHh = Math.round(15 * S);
+    const hw = 45;
+    const hh = 16;
     DIFFICULTY_ORDER.forEach(key => {
       const btn = this.diffBtns.get(key);
       if (!btn) return;
@@ -285,7 +292,7 @@ export class UIScene extends Phaser.Scene {
       const bg = btn.list[0] as Phaser.GameObjects.Graphics;
       bg.clear();
       bg.fillStyle(isActive ? cfg.color : 0x374151);
-      bg.fillRoundedRect(-diffHw, -diffHh, diffHw * 2, diffHh * 2, 7);
+      bg.fillRoundedRect(-hw, -hh, hw * 2, hh * 2, 7);
     });
 
     this.setAlpha(this.topupBtn, state.balance < state.stake ? 1 : 0.35);
@@ -293,6 +300,7 @@ export class UIScene extends Phaser.Scene {
     if (state.phase === 'ENDED') {
       this.idlePanel.setVisible(false);
       this.activeBar.setVisible(false);
+      this.hopZone.disableInteractive();
 
       if (state.lastResult === 'loss') {
         this.resultText.setText('💥 PANCHA!').setColor('#f87171');
@@ -334,15 +342,15 @@ export class UIScene extends Phaser.Scene {
     bg.fillStyle(color);
     bg.fillRoundedRect(-w / 2, -h / 2, w, h, 8);
 
-    const fontSize = Math.max(13, Math.round(13 * S));
     const tx = this.add.text(0, 0, label, {
-      fontFamily: 'monospace', fontSize: `${fontSize}px`, fontStyle: 'bold', color: '#ffffff',
+      fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5, 0.5);
 
     container.add([bg, tx]);
     container.setSize(w, h);
     container.setInteractive();
     container.on('pointerdown', callback);
+    container.setDepth(10);
 
     return container;
   }
