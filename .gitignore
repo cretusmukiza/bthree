@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# TSC output in src (compiled JS next to TS)
+src/**/*.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

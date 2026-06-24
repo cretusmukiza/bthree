@@ -37,7 +37,7 @@ export class MusicSystem {
     this.ensureContext();
 
     this._playing = true;
-    this.nextLoopTime = this.ctx.currentTime + 0.05;
+    this.nextLoopTime = this.ctx!.currentTime + 0.05;
     this.scheduleLoop();
     this.tick();
   }
