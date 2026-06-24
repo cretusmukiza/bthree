@@ -5,12 +5,13 @@ import { DIFFICULTIES, DIFFICULTY_ORDER, DifficultyKey } from '../config/difficu
 import { GameScene } from './GameScene';
 
 const FONT = { fontFamily: 'monospace', color: '#ffffff' };
+const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+const S = IS_TOUCH ? 1.2 : 1;
 
 export class UIScene extends Phaser.Scene {
   private gameScene!: GameScene;
   private ready = false;
 
-  // HUD elements
   private balanceText!: Phaser.GameObjects.Text;
   private multiplierText!: Phaser.GameObjects.Text;
   private payoutText!: Phaser.GameObjects.Text;
@@ -19,12 +20,10 @@ export class UIScene extends Phaser.Scene {
   private resultBanner!: Phaser.GameObjects.Container;
   private resultText!: Phaser.GameObjects.Text;
 
-  // Panels
   private idlePanel!: Phaser.GameObjects.Container;
   private activeBar!: Phaser.GameObjects.Container;
   private topBar!: Phaser.GameObjects.Container;
 
-  // Buttons
   private anzaBtn!: Phaser.GameObjects.Container;
   private toaBtn!: Phaser.GameObjects.Container;
   private stakeMinusBtn!: Phaser.GameObjects.Container;
@@ -46,52 +45,78 @@ export class UIScene extends Phaser.Scene {
     this.buildIdlePanel();
     this.buildActiveBar();
     this.buildResultBanner();
+    this.setupSwipe();
 
     this.ready = true;
     this.onStateUpdate(this.gameScene.state);
   }
 
-  // ─── Top bar: balance, lanes (compact) ──────────────────────────────────────
+  // ─── Swipe-right to hop (mobile) ──────────────────────────────────────────
+
+  private setupSwipe(): void {
+    let startX = 0;
+    let startY = 0;
+    let swiping = false;
+
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      startX = p.x;
+      startY = p.y;
+      swiping = true;
+    });
+
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (!swiping) return;
+      swiping = false;
+      const dx = p.x - startX;
+      const dy = Math.abs(p.y - startY);
+      if (dx > 40 && dy < dx * 0.7) {
+        this.gameScene.handleHopInput();
+      }
+    });
+  }
+
+  // ─── Top bar ──────────────────────────────────────────────────────────────
 
   private buildTopBar(): void {
     this.topBar = this.add.container(0, 0);
+    const barH = Math.round(40 * S);
 
     const bg = this.add.graphics();
     bg.fillStyle(0x0f1225, 0.85);
-    bg.fillRoundedRect(4, 4, GAME_WIDTH - 8, 36, 8);
+    bg.fillRoundedRect(4, 4, GAME_WIDTH - 8, barH, 8);
 
     this.balanceText = this.add.text(14, 10, 'Pesa: 1,000', {
-      ...FONT, fontSize: '13px',
+      ...FONT, fontSize: `${Math.round(14 * S)}px`,
     });
 
     this.laneText = this.add.text(GAME_WIDTH / 2, 10, 'Njia: 0', {
-      ...FONT, fontSize: '13px',
+      ...FONT, fontSize: `${Math.round(14 * S)}px`,
     }).setOrigin(0.5, 0);
 
-    this.topupBtn = this.makeButton(GAME_WIDTH - 48, 22, '+ Pesa', 0x065f46, () => {
+    this.topupBtn = this.makeButton(GAME_WIDTH - 52, barH / 2 + 4, '+ Pesa', 0x065f46, () => {
       this.gameScene.topUp();
-    }, 60, 22);
+    }, Math.round(68 * S), Math.round(26 * S));
 
     this.topBar.add([bg, this.balanceText, this.laneText, this.topupBtn]);
   }
 
-  // ─── Multiplier (floating, minimal) ─────────────────────────────────────────
+  // ─── Multiplier ───────────────────────────────────────────────────────────
 
   private buildMultiplierDisplay(): void {
-    this.multiplierText = this.add.text(GAME_WIDTH / 2, 56, '1.00×', {
-      ...FONT, fontSize: '28px', fontStyle: 'bold',
+    this.multiplierText = this.add.text(GAME_WIDTH / 2, Math.round(56 * S), '1.00×', {
+      ...FONT, fontSize: `${Math.round(28 * S)}px`, fontStyle: 'bold',
     }).setOrigin(0.5, 0.5).setAlpha(0.9);
 
-    this.payoutText = this.add.text(GAME_WIDTH / 2, 78, '', {
-      ...FONT, fontSize: '11px', color: '#86efac',
+    this.payoutText = this.add.text(GAME_WIDTH / 2, Math.round(80 * S), '', {
+      ...FONT, fontSize: `${Math.round(12 * S)}px`, color: '#86efac',
     }).setOrigin(0.5, 0.5);
   }
 
-  // ─── Idle panel: stake, difficulty, ANZA (shown only when IDLE) ─────────────
+  // ─── Idle panel ───────────────────────────────────────────────────────────
 
   private buildIdlePanel(): void {
     this.idlePanel = this.add.container(0, 0);
-    const panelH = 130;
+    const panelH = Math.round(140 * S);
     const panelY = GAME_HEIGHT - panelH;
 
     const bg = this.add.graphics();
@@ -100,68 +125,77 @@ export class UIScene extends Phaser.Scene {
     this.idlePanel.add(bg);
 
     // Stake row
-    const stakeY = panelY + 12;
-    const stakeLabel = this.add.text(20, stakeY + 2, 'Dau:', { ...FONT, fontSize: '13px' });
+    const stakeY = panelY + Math.round(14 * S);
+    const stakeLabel = this.add.text(20, stakeY + 2, 'Dau:', {
+      ...FONT, fontSize: `${Math.round(14 * S)}px`,
+    });
 
-    this.stakeMinusBtn = this.makeButton(110, stakeY + 10, '−', 0x374151, () => {
+    const btnH = Math.round(32 * S);
+    const btnW = Math.round(44 * S);
+
+    this.stakeMinusBtn = this.makeButton(110, stakeY + btnH / 2, '−', 0x374151, () => {
       this.gameScene.setStake(this.gameScene.state.stake - 10);
-    }, 36, 26);
+    }, btnW, btnH);
 
     this.stakeText = this.add.text(GAME_WIDTH / 2, stakeY, '10', {
-      ...FONT, fontSize: '17px', fontStyle: 'bold',
+      ...FONT, fontSize: `${Math.round(18 * S)}px`, fontStyle: 'bold',
     }).setOrigin(0.5, 0);
 
-    this.stakePlusBtn = this.makeButton(GAME_WIDTH - 110, stakeY + 10, '+', 0x374151, () => {
+    this.stakePlusBtn = this.makeButton(GAME_WIDTH - 110, stakeY + btnH / 2, '+', 0x374151, () => {
       this.gameScene.setStake(this.gameScene.state.stake + 10);
-    }, 36, 26);
+    }, btnW, btnH);
 
     this.idlePanel.add([stakeLabel, this.stakeMinusBtn, this.stakeText, this.stakePlusBtn]);
 
     // Difficulty row
-    const diffY = panelY + 44;
-    const diffBtnW = 80;
+    const diffY = panelY + Math.round(50 * S);
+    const diffBtnW = Math.round(82 * S);
+    const diffBtnH = Math.round(30 * S);
     const totalW = DIFFICULTY_ORDER.length * diffBtnW + (DIFFICULTY_ORDER.length - 1) * 6;
     const startX = (GAME_WIDTH - totalW) / 2;
 
     DIFFICULTY_ORDER.forEach((key, i) => {
       const cfg = DIFFICULTIES[key];
       const bx = startX + i * (diffBtnW + 6) + diffBtnW / 2;
-      const btn = this.makeButton(bx, diffY + 12, cfg.label, cfg.color, () => {
+      const btn = this.makeButton(bx, diffY + diffBtnH / 2, cfg.label, cfg.color, () => {
         this.gameScene.setDifficulty(key);
-      }, diffBtnW, 26);
+      }, diffBtnW, diffBtnH);
       this.diffBtns.set(key, btn);
       this.idlePanel.add(btn);
     });
 
-    // ANZA button — big and centered
-    const btnY = panelY + 92;
-    this.anzaBtn = this.makeButton(GAME_WIDTH / 2, btnY, 'ANZA', 0x16a34a, () => {
+    // ANZA button
+    const anzaY = panelY + Math.round(96 * S);
+    const anzaW = Math.round(220 * S);
+    const anzaH = Math.round(42 * S);
+    this.anzaBtn = this.makeButton(GAME_WIDTH / 2, anzaY, 'ANZA', 0x16a34a, () => {
       this.gameScene.handleHopInput();
-    }, 200, 38);
+    }, anzaW, anzaH);
     this.idlePanel.add(this.anzaBtn);
   }
 
-  // ─── Active bar: slim TOA bar at bottom during gameplay ─────────────────────
+  // ─── Active bar ───────────────────────────────────────────────────────────
 
   private buildActiveBar(): void {
     this.activeBar = this.add.container(0, 0);
     this.activeBar.setVisible(false);
 
-    const barH = 44;
-    const barY = GAME_HEIGHT - barH - 4;
+    const barH = Math.round(50 * S);
+    const barW = Math.round(200 * S);
+    const barY = GAME_HEIGHT - barH - 6;
 
     const bg = this.add.graphics();
     bg.fillStyle(0x0f1225, 0.8);
-    bg.fillRoundedRect(GAME_WIDTH / 2 - 90, barY, 180, barH, 10);
+    bg.fillRoundedRect(GAME_WIDTH / 2 - barW / 2, barY, barW, barH, 12);
     this.activeBar.add(bg);
 
     this.toaBtn = this.makeButton(GAME_WIDTH / 2, barY + barH / 2, 'TOA  💰', 0xb45309, () => {
       this.gameScene.handleToa();
-    }, 160, 34);
+    }, Math.round(180 * S), Math.round(40 * S));
     this.activeBar.add(this.toaBtn);
   }
 
-  // ─── Result banner ──────────────────────────────────────────────────────────
+  // ─── Result banner ────────────────────────────────────────────────────────
 
   private resultSubText!: Phaser.GameObjects.Text;
   private continueText!: Phaser.GameObjects.Text;
@@ -170,37 +204,42 @@ export class UIScene extends Phaser.Scene {
     this.resultBanner = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20);
     this.resultBanner.setVisible(false);
 
+    const bw = Math.round(380 * S);
+    const bh = Math.round(160 * S);
+
     const bg = this.add.graphics();
     bg.fillStyle(0x0f1225, 0.97);
-    bg.fillRoundedRect(-180, -60, 360, 150, 18);
+    bg.fillRoundedRect(-bw / 2, -bh / 2 + 10, bw, bh, 18);
     bg.lineStyle(2, 0xffffff, 0.08);
-    bg.strokeRoundedRect(-180, -60, 360, 150, 18);
+    bg.strokeRoundedRect(-bw / 2, -bh / 2 + 10, bw, bh, 18);
 
-    this.resultText = this.add.text(0, -26, '', {
-      ...FONT, fontSize: '28px', fontStyle: 'bold',
+    this.resultText = this.add.text(0, -20, '', {
+      ...FONT, fontSize: `${Math.round(28 * S)}px`, fontStyle: 'bold',
     }).setOrigin(0.5, 0.5);
 
-    this.resultSubText = this.add.text(0, 10, '', {
-      ...FONT, fontSize: '13px',
+    this.resultSubText = this.add.text(0, Math.round(14 * S), '', {
+      ...FONT, fontSize: `${Math.round(14 * S)}px`,
     }).setOrigin(0.5, 0.5);
 
+    const cbw = Math.round(140 * S);
+    const cbh = Math.round(38 * S);
     const continueBtn = this.add.graphics();
     continueBtn.fillStyle(0x3b82f6, 1);
-    continueBtn.fillRoundedRect(-60, 38, 120, 34, 8);
+    continueBtn.fillRoundedRect(-cbw / 2, Math.round(40 * S), cbw, cbh, 8);
 
-    this.continueText = this.add.text(0, 55, 'ENDELEA', {
-      fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#ffffff',
+    this.continueText = this.add.text(0, Math.round(40 * S) + cbh / 2, 'ENDELEA', {
+      fontFamily: 'monospace', fontSize: `${Math.round(14 * S)}px`, fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5, 0.5);
 
     this.resultBanner.add([bg, this.resultText, this.resultSubText, continueBtn, this.continueText]);
-    this.resultBanner.setSize(360, 150);
+    this.resultBanner.setSize(bw, bh);
     this.resultBanner.setInteractive();
     this.resultBanner.on('pointerdown', () => {
       this.gameScene.returnToIdle();
     });
   }
 
-  // ─── State update ─────────────────────────────────────────────────────────────
+  // ─── State update ─────────────────────────────────────────────────────────
 
   onStateUpdate(state: GameState): void {
     if (!this.ready) return;
@@ -213,35 +252,31 @@ export class UIScene extends Phaser.Scene {
     this.balanceText.setText(`Pesa: ${state.balance.toLocaleString()}`);
     this.laneText.setText(`Njia: ${state.lanesCleared}`);
 
-    // Multiplier
     this.multiplierText.setText(`${state.multiplier.toFixed(2)}×`);
     this.multiplierText.setColor(
       state.multiplier >= 10 ? '#f87171' :
       state.multiplier >= 5  ? '#fb923c' :
       state.multiplier >= 2  ? '#fbbf24' : '#ffffff'
     );
-    this.multiplierText.setVisible(isPlaying || state.phase === 'HOPPING');
+    this.multiplierText.setVisible(isPlaying);
 
-    // Payout info
     if (isPlaying) {
       this.payoutText.setText(`Toa → ${payout.toLocaleString()} pesa`).setVisible(true);
     } else {
       this.payoutText.setVisible(false);
     }
 
-    // Swap panels: idle panel vs active bar
     this.idlePanel.setVisible(isIdle);
     this.activeBar.setVisible(isPlaying);
 
-    // TOA button opacity
     this.setAlpha(this.toaBtn, (isPlaying && state.multiplier > 1) ? 1 : 0.25);
 
-    // Stake
     this.stakeText.setText(state.stake.toLocaleString());
     this.setAlpha(this.stakeMinusBtn, isIdle ? 1 : 0.3);
     this.setAlpha(this.stakePlusBtn, isIdle ? 1 : 0.3);
 
-    // Difficulty highlights
+    const diffHw = Math.round(41 * S);
+    const diffHh = Math.round(15 * S);
     DIFFICULTY_ORDER.forEach(key => {
       const btn = this.diffBtns.get(key);
       if (!btn) return;
@@ -250,13 +285,11 @@ export class UIScene extends Phaser.Scene {
       const bg = btn.list[0] as Phaser.GameObjects.Graphics;
       bg.clear();
       bg.fillStyle(isActive ? cfg.color : 0x374151);
-      bg.fillRoundedRect(-40, -13, 80, 26, 7);
+      bg.fillRoundedRect(-diffHw, -diffHh, diffHw * 2, diffHh * 2, 7);
     });
 
-    // Top-up
     this.setAlpha(this.topupBtn, state.balance < state.stake ? 1 : 0.35);
 
-    // Result banner
     if (state.phase === 'ENDED') {
       this.idlePanel.setVisible(false);
       this.activeBar.setVisible(false);
@@ -288,7 +321,7 @@ export class UIScene extends Phaser.Scene {
     }
   }
 
-  // ─── Helpers ────────────────────────────────────────────────────────────────
+  // ─── Helpers ──────────────────────────────────────────────────────────────
 
   private makeButton(
     x: number, y: number,
@@ -299,10 +332,11 @@ export class UIScene extends Phaser.Scene {
     const container = this.add.container(x, y);
     const bg = this.add.graphics();
     bg.fillStyle(color);
-    bg.fillRoundedRect(-w / 2, -h / 2, w, h, 7);
+    bg.fillRoundedRect(-w / 2, -h / 2, w, h, 8);
 
+    const fontSize = Math.max(13, Math.round(13 * S));
     const tx = this.add.text(0, 0, label, {
-      fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#ffffff',
+      fontFamily: 'monospace', fontSize: `${fontSize}px`, fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5, 0.5);
 
     container.add([bg, tx]);
