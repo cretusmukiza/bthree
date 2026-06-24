@@ -310,7 +310,7 @@ export class GameScene extends Phaser.Scene {
     this.chickenLaneIndex = -1;
 
     this.cameras.main.startFollow(this.chicken, true, 0.08, 0);
-    this.cameras.main.setFollowOffset(-GAME_WIDTH * 0.2, 0);
+    this.cameras.main.setFollowOffset(-GAME_WIDTH * 0.35, 0);
 
     this.state.phase = 'ACTIVE';
     this.updateLaneBadges();
@@ -459,7 +459,7 @@ export class GameScene extends Phaser.Scene {
     this.state.multiplier = 1.0;
     this.spawnChickenOnCurb();
     this.cameras.main.startFollow(this.chicken, true, 0.08, 0);
-    this.cameras.main.setFollowOffset(-GAME_WIDTH * 0.2, 0);
+    this.cameras.main.setFollowOffset(-GAME_WIDTH * 0.35, 0);
     this.emitStateUpdate();
   }
 

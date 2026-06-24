@@ -1,11 +1,16 @@
-export const GAME_WIDTH = 896;
-export const GAME_HEIGHT = 720;
+const _w = typeof window !== 'undefined' ? window.innerWidth : 896;
+const _h = typeof window !== 'undefined' ? window.innerHeight : 720;
+const _portrait = _h > _w;
+const _mobile = _w < 768;
 
-// Lanes are vertical strips; vehicles drive up/down
+export const GAME_WIDTH = (_mobile && _portrait) ? 480 : 896;
+export const GAME_HEIGHT = (_mobile && _portrait)
+  ? Math.round(GAME_WIDTH * (_h / _w) * 0.92)
+  : 720;
+
 export const LANE_WIDTH = 64;
 export const MEDIAN_WIDTH = 30;
 
-// The visible road area occupies the full screen height
 export const ROAD_TOP = 0;
 export const ROAD_BOTTOM = GAME_HEIGHT;
 
