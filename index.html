@@ -7,7 +7,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="screen-orientation" content="landscape" />
     <title>Kuku Cross — Mission Barabara</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,17 +28,20 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
       }
 
       #game-container {
-        position: relative;
+        position: fixed;
+        inset: 0;
         width: 100%;
         height: 100%;
       }
 
       #game-container canvas {
         display: block;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover;
       }
 
       /* Loading splash */
@@ -58,56 +60,9 @@
       #loading h1 { font-size: 1.6rem; letter-spacing: 2px; }
       #loading p  { font-size: 0.9rem; color: #9ca3af; }
       #loading.hidden { display: none; }
-
-      /* Portrait orientation prompt for mobile */
-      #rotate-prompt {
-        display: none;
-        position: fixed;
-        inset: 0;
-        z-index: 999;
-        background: #0f1225;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: #fbbf24;
-        gap: 16px;
-        text-align: center;
-        padding: 40px;
-      }
-      #rotate-prompt .icon { font-size: 3rem; animation: rotate-hint 1.5s ease-in-out infinite; }
-      #rotate-prompt p { color: #9ca3af; font-size: 0.95rem; line-height: 1.5; }
-      #rotate-prompt button {
-        margin-top: 8px;
-        padding: 10px 28px;
-        background: #374151;
-        border: none;
-        border-radius: 8px;
-        color: #fff;
-        font-family: monospace;
-        font-size: 0.9rem;
-        cursor: pointer;
-      }
-
-      @keyframes rotate-hint {
-        0%, 100% { transform: rotate(0deg); }
-        50% { transform: rotate(90deg); }
-      }
-
-      @media (orientation: portrait) and (max-width: 768px) {
-        #rotate-prompt { display: flex; }
-        #rotate-prompt.dismissed { display: none; }
-      }
     </style>
   </head>
   <body>
-    <div id="rotate-prompt">
-      <div class="icon">📱</div>
-      <h2 style="color: #fbbf24;">Zungusha Simu Yako</h2>
-      <p>Geuza simu yako kwa upande<br/>ili kupata uzoefu bora.</p>
-      <p style="color:#6b7280; font-size:0.8rem;">(Rotate your phone for the best experience)</p>
-      <button onclick="this.parentElement.classList.add('dismissed')">Endelea hivi ➜</button>
-    </div>
-
     <div id="game-container">
       <div id="loading">
         <h1>🐔 KUKU CROSS</h1>

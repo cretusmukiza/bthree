@@ -12,7 +12,7 @@ const config: Phaser.Types.Core.GameConfig = {
   parent: 'game-container',
   scene: [BootScene, GameScene, UIScene],
   scale: {
-    mode: Phaser.Scale.FIT,
+    mode: Phaser.Scale.ENVELOP,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     expandParent: true,
     width: GAME_WIDTH,
